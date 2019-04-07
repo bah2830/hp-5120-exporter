@@ -2,6 +2,7 @@ package networkswitch
 
 type Switch interface {
 	GetEnvironmentDetails() (*EnvironmentDetails, error)
+	Disconnect()
 }
 
 type EnvironmentDetails struct {

@@ -7,17 +7,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/bah2830/switch-exporter/pkg/config"
 	"github.com/bah2830/switch-exporter/pkg/exporter"
 	"github.com/bah2830/switch-exporter/pkg/metrics"
-
-	"github.com/bah2830/switch-exporter/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "switch-exporter",
-	Short: "Prometheus exporter for hp 5120 switches",
+	Short: "Prometheus exporter for network switches",
 	PreRun: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlags(cmd.Flags())
 		if err := config.LoadConfig(); err != nil {
@@ -30,13 +29,17 @@ var rootCmd = &cobra.Command{
 		c := config.GetConfig()
 		go metrics.Serve(c)
 
-		e := exporter.New(c)
-
-		if err := e.Start(); err != nil {
+		exp, err := exporter.New(c)
+		if err != nil {
 			fmt.Print(err)
 			os.Exit(1)
 		}
-		defer e.Stop()
+
+		if err := exp.Start(); err != nil {
+			fmt.Print(err)
+			os.Exit(1)
+		}
+		defer exp.Stop()
 
 		<-sig
 	},

@@ -1,4 +1,4 @@
-package hpswitch
+package hp
 
 import "io"
 

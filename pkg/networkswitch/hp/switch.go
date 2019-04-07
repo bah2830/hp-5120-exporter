@@ -1,4 +1,4 @@
-package hpswitch
+package hp
 
 import (
 	"net"
@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/crypto/ssh"
-
 	"github.com/bah2830/switch-exporter/pkg/networkswitch"
+	"golang.org/x/crypto/ssh"
 )
 
 type Switch struct {
@@ -125,6 +124,6 @@ func (s *Switch) GetEnvironmentDetails() (*networkswitch.EnvironmentDetails, err
 	return details, nil
 }
 
-func (s *Switch) Close() {
+func (s *Switch) Disconnect() {
 	s.client.Close()
 }

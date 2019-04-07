@@ -6,23 +6,29 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/bah2830/switch-exporter/pkg/metrics"
-
 	"github.com/bah2830/switch-exporter/pkg/config"
-	"github.com/bah2830/switch-exporter/pkg/hpswitch"
+	"github.com/bah2830/switch-exporter/pkg/metrics"
+	"github.com/bah2830/switch-exporter/pkg/networkswitch"
+	"github.com/bah2830/switch-exporter/pkg/networkswitch/hp"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Exporter struct {
-	conf   *config.Config
-	cancel context.CancelFunc
+	conf          *config.Config
+	cancel        context.CancelFunc
+	networkSwitch networkswitch.Switch
 }
 
-func New(c *config.Config) *Exporter {
-	return &Exporter{
-		conf: c,
+func New(c *config.Config) (*Exporter, error) {
+	networkSwitch, err := hp.NewWithPassword(c.SSH.Host, c.SSH.Port, c.SSH.Username, c.SSH.Password)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Exporter{
+		conf:          c,
+		networkSwitch: networkSwitch,
+	}, nil
 }
 
 func (e *Exporter) Start() error {
@@ -57,13 +63,7 @@ func (e *Exporter) Start() error {
 func (e *Exporter) pollSwitch() error {
 	log.Println("getting switch environment details")
 
-	hpSwitch, err := hpswitch.NewWithPassword(e.conf.SSH.Host, e.conf.SSH.Port, e.conf.SSH.Username, e.conf.SSH.Password)
-	if err != nil {
-		return err
-	}
-	defer hpSwitch.Close()
-
-	details, err := hpSwitch.GetEnvironmentDetails()
+	details, err := e.networkSwitch.GetEnvironmentDetails()
 	if err != nil {
 		return err
 	}
@@ -84,4 +84,5 @@ func (e *Exporter) pollSwitch() error {
 
 func (e *Exporter) Stop() {
 	e.cancel()
+	e.networkSwitch.Disconnect()
 }
