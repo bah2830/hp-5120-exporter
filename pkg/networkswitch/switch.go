@@ -1,9 +1,22 @@
 package networkswitch
 
 type Switch interface {
-	GetEnvironmentDetails() (EnvironmentDetails, error)
+	GetEnvironmentDetails() (*EnvironmentDetails, error)
 }
 
-type EnvironmentDetails interface {
-	GetTemperatureCelicius() int16
+type EnvironmentDetails struct {
+	Sensors []Sensor
+}
+
+type Sensor struct {
+	Name        string
+	TempCelsius int
+	Limits      Limits
+}
+
+type Limits struct {
+	Lower    int
+	Warning  int
+	Alarm    int
+	Critical int
 }

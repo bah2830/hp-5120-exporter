@@ -1,13 +1,14 @@
 package hpswitch
 
 import (
-	"fmt"
 	"net"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/bah2830/hp-5120-exporter/pkg/networkswitch"
+	"github.com/bah2830/switch-exporter/pkg/networkswitch"
 )
 
 type Switch struct {
@@ -43,36 +44,85 @@ func NewWithPassword(ip string, port uint16, username, password string) (*Switch
 	return hpSwitch, nil
 }
 
-func (s *Switch) GetEnvironmentDetails() (networkswitch.EnvironmentDetails, error) {
-	session, err := s.client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-	defer session.Close()
-
-	output, err := session.StdoutPipe()
+func (s *Switch) GetEnvironmentDetails() (*networkswitch.EnvironmentDetails, error) {
+	output, err := s.getSSHResponse("dis env")
 	if err != nil {
 		return nil, err
 	}
 
-	if err := session.Run("dis env\nquit\n"); err != nil {
-		return nil, err
-	}
-	// output, err := session.CombinedOutput("dis env\n")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// fmt.Println(string(output))
-
-	session.Wait()
-
-	data := make([]byte, 0)
-	if _, err := output.Read(data); err != nil {
+	r, err := regexp.Compile("hotspot (?P<name>\\d+)\\s+(?P<temp>\\S+)\\s+(?P<lower>\\S+)\\s+(?P<warning>\\S+)\\s+(?P<alarm>\\S+)\\s+(?P<alarm>\\S+)")
+	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(string(data))
-	return nil, nil
+	details := &networkswitch.EnvironmentDetails{
+		Sensors: make([]networkswitch.Sensor, 0),
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "hotspot") {
+			continue
+		}
+
+		matches := r.FindStringSubmatch(line)
+		if len(matches) != 7 {
+			continue
+		}
+
+		var indexToInt = func(match string) (int, error) {
+			if match == "NA" {
+				return 0, nil
+			}
+
+			output, err := strconv.Atoi(match)
+			if err != nil {
+				return 0, err
+			}
+
+			return output, nil
+
+		}
+
+		temp, err := indexToInt(matches[2])
+		if err != nil {
+			return nil, err
+		}
+
+		lower, err := indexToInt(matches[3])
+		if err != nil {
+			return nil, err
+		}
+
+		warning, err := indexToInt(matches[4])
+		if err != nil {
+			return nil, err
+		}
+
+		alarm, err := indexToInt(matches[5])
+		if err != nil {
+			return nil, err
+		}
+
+		critical, err := indexToInt(matches[6])
+		if err != nil {
+			return nil, err
+		}
+
+		details.Sensors = append(details.Sensors, networkswitch.Sensor{
+			Name:        "hotspot " + matches[1],
+			TempCelsius: temp,
+			Limits: networkswitch.Limits{
+				Lower:    lower,
+				Warning:  warning,
+				Alarm:    alarm,
+				Critical: critical,
+			},
+		})
+
+	}
+
+	return details, nil
 }
 
 func (s *Switch) Close() {
