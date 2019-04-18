@@ -3,7 +3,13 @@ package hp
 import "io"
 
 func (s *Switch) getSSHResponse(cmd string) (string, error) {
-	session, err := s.client.NewSession()
+	client, err := s.getClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
 	if err != nil {
 		return "", err
 	}

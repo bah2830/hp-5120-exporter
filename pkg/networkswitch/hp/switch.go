@@ -12,7 +12,6 @@ import (
 
 type Switch struct {
 	clientConfig *ssh.ClientConfig
-	client       *ssh.Client
 	ip           string
 	port         uint16
 }
@@ -33,14 +32,21 @@ func NewWithPassword(ip string, port uint16, username, password string) (*Switch
 		},
 	}
 
-	client, err := ssh.Dial("tcp", net.JoinHostPort(ip, strconv.Itoa(int(port))), hpSwitch.clientConfig)
+	client, err := hpSwitch.getClient()
 	if err != nil {
 		return nil, err
 	}
-
-	hpSwitch.client = client
+	defer client.Close()
 
 	return hpSwitch, nil
+}
+
+func (s *Switch) getClient() (*ssh.Client, error) {
+	return ssh.Dial("tcp", net.JoinHostPort(
+		s.ip,
+		strconv.Itoa(int(s.port))),
+		s.clientConfig,
+	)
 }
 
 func (s *Switch) GetEnvironmentDetails() (*networkswitch.EnvironmentDetails, error) {
@@ -125,5 +131,4 @@ func (s *Switch) GetEnvironmentDetails() (*networkswitch.EnvironmentDetails, err
 }
 
 func (s *Switch) Disconnect() {
-	s.client.Close()
 }

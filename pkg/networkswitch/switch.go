@@ -1,5 +1,7 @@
 package networkswitch
 
+import "fmt"
+
 type Switch interface {
 	GetEnvironmentDetails() (*EnvironmentDetails, error)
 	Disconnect()
@@ -20,4 +22,8 @@ type Limits struct {
 	Warning  int
 	Alarm    int
 	Critical int
+}
+
+func (s Sensor) String() string {
+	return fmt.Sprintf("%s: %d", s.Name, s.TempCelsius)
 }

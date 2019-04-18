@@ -77,6 +77,8 @@ func (e *Exporter) pollSwitch() error {
 		}
 
 		metrics.Temp.With(labels).Set(float64(sensor.TempCelsius))
+
+		log.Println(sensor.String())
 	}
 
 	return nil
